@@ -7,8 +7,8 @@ from torch.optim import lr_scheduler
 from meditorch.nn import Trainer
 from meditorch.utils.plot import plot_image_truemask_predictedmask
 import numpy as np
-import EDD
-from util import resize_images
+from EDD import EDD
+from util import resize_my_images
 
 np.random.seed(42)
 
@@ -32,9 +32,9 @@ def get_edd_loader(path,validation_split=.25,shuffle_dataset=True):
 def main():
   np.random.seed(42)
   #seting up the data set
-  !mkdir ./EDD2020/resized_masks/
+  #!mkdir ./EDD2020/resized_masks/
   resize_my_images('./EDD2020/EDD2020_release-I_2020-01-15/masks/','./EDD2020/resized_masks/',is_masks=True)
-  !mkdir ./EDD2020/resized_images/
+  #!mkdir ./EDD2020/resized_images/
   resize_my_images('./EDD2020/EDD2020_release-I_2020-01-15/originalImages/','./EDD2020/resized_images/',is_masks=False)
   
     

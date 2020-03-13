@@ -97,6 +97,6 @@ def display_image(img):
 
     '''
     from matplotlib import pyplot as plt
-    %matplotlib inline
+    # %matplotlib inline
     plt.imshow(img,)
     plt.show()

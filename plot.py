@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from meditorch.utils.images import resize_image_to_square
+import numpy as np
+
 """
 Created on Wed Nov 21 13:24:24 2018
 
@@ -189,7 +192,7 @@ if __name__=="__main__":
     masksfile2='./EDD2020/EDD2020_release-I_2020-01-15/masks/EDD2020_ACB0001_suspicious.tif'
     classfile = './EDD2020/EDD2020_release-I_2020-01-15/class_list.txt'
 
-    
+    print('TEST')
     img = read_img(imgfile)
     img = resize_image_to_square(img, 224, pad_cval=0)
     boxes = read_boxes(bboxfile)
