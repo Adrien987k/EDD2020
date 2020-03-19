@@ -1,20 +1,28 @@
+import torch
+
 from functools import reduce
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from meditorch.nn.models import UNetResNet
+
 from torchsummary import summary
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from meditorch.nn import Trainer
+from meditorch.nn.trainer import calc_loss, compute_metrics, print_metrics
+
 # from meditorch.utils.plot import plot_image_truemask_predictedmask
 import numpy as np
 from EDD import EDD
 from util import resize_my_images
 
+
 from PIL import Image
 import matplotlib.pyplot as plt
-
+from collections import defaultdict
 import os
+
+from skimage.measure import label, regionprops
 
 np.random.seed(42)
 
@@ -75,6 +83,34 @@ def plot_image_truemask_predictedmask(images, labels, preds, index):
     img_arrays = [input_images_rgb, target_masks_rgb, pred_rgb]
     flatten_list = reduce(lambda x, y: x+y, zip(*img_arrays))
 
+    plot_img_array(np.array(flatten_list), ncol=len(img_arrays), index=index)
+
+
+def draw_bboxs(im, bboxs):
+    segments_colors = np.asarray(
+        [(201, 58, 64), (242, 207, 1), (0, 152, 75), (101, 172, 228), (56, 34, 132), (160, 194, 56)])
+
+    for label, bbox in bboxs:
+        color = segments_colors[label]
+        x, y, w, h = bbox
+        im = cv2.rectangle(im, (x, y), (x + w, y + h), color, 2)
+
+    return im
+
+
+def plot_image_truebbox_predictedbbox(images, bboxs, bboxs_preds, index):
+
+    input_images_rgb = [reverse_transform(x) for x in images]
+
+    images_with_real_masks = [draw_bboxs(im, bboxs)
+                              for im, bboxs in zip(images, bboxs)]
+    images_with_pred_masks = [draw_bboxs(im, bboxs)
+                              for im, bboxs in zip(images, bboxs_preds)]
+
+    img_arrays = [input_images_rgb,
+                  images_with_real_masks, images_with_pred_masks]
+
+    flatten_list = reduce(lambda x, y: x+y, zip(*img_arrays))
     plot_img_array(np.array(flatten_list), ncol=len(img_arrays), index=index)
 
 
@@ -149,16 +185,17 @@ def save_to_tif(path, data):
 
 
 def main():
+
     np.random.seed(42)
     # seting up the data set
 
-    create_dir('./EDD2020/resized_masks/')
-    resize_my_images('./EDD2020/EDD2020_release-I_2020-01-15/masks/',
-                     './EDD2020/resized_masks/', is_masks=True)
+    # create_dir('./EDD2020/resized_masks/')
+    # resize_my_images('./EDD2020/EDD2020_release-I_2020-01-15/masks/',
+    #                  './EDD2020/resized_masks/', is_masks=True)
 
-    create_dir('./EDD2020/resized_images/')
-    resize_my_images('./EDD2020/EDD2020_release-I_2020-01-15/originalImages/',
-                     './EDD2020/resized_images/', is_masks=False)
+    # create_dir('./EDD2020/resized_images/')
+    # resize_my_images('./EDD2020/EDD2020_release-I_2020-01-15/originalImages/',
+    #                  './EDD2020/resized_images/', is_masks=False)
 
     loader = get_edd_loader('./EDD2020/', shuffle_dataset=True)
 
@@ -180,12 +217,19 @@ def main():
     create_dir('./EDD2020/test/bboxs_pred')
     create_dir('./EDD2020/test/plots')
 
+    metrics = defaultdict(float)
+
     index = 0
-    for images, masks in loader['test']:
+    for epoch, (images, masks) in enumerate(loader['test']):
         masks_preds = trainer.predict(images)
+
         bboxs = ...
+        bboxs_preds = ...
 
         plot_image_truemask_predictedmask(images, masks, masks_preds, index)
+        plot_image_truebbox_predictedbbox(images, bboxs, bboxs_preds, index)
+
+        calc_loss(torch.Tensor(masks_preds), masks, metrics)
 
         for image, mask, mask_pred in zip(images, masks, masks_preds):
             save_to_tif(
@@ -200,7 +244,31 @@ def main():
             plt.imsave(
                 './EDD2020/test/images/IMG_{:03d}.png'.format(index), image)
 
+            # Compute BBOX ###########
+            lbl_0 = label(mask)
+            props = regionprops(lbl_0)
+
+            #img_1 = img_0.copy()
+            #print ('Image', image)
+
+            for prop in props:
+                print('Found bbox', prop.bbox)
+                cv2.rectangle(
+                    img_1, (prop.bbox[1], prop.bbox[0]), (prop.bbox[3], prop.bbox[2]), (255, 0, 0), 2)
+
+            ax1.imshow(img_0)
+            ax1.set_title('Image')
+            ax2.set_title('Mask')
+            ax3.set_title('Image with derived bounding box')
+            ax2.imshow(mask[..., 0], cmap='gray')
+            ax3.imshow(img_1)
+            plt.show()
+            ##########################
+
             index += 1
+
+    computed_metrics = compute_metrics(metrics, epoch + 1)
+    print_metrics(computed_metrics, 'test')
 
 
 if __name__ == '__main__':
