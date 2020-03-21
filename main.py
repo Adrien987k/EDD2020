@@ -11,7 +11,7 @@ from torch.optim import lr_scheduler
 from meditorch.nn import Trainer
 from meditorch.nn.trainer import calc_loss, compute_metrics, print_metrics
 
-# from meditorch.utils.plot import plot_image_truemask_predictedmask
+from meditorch.utils.plot import plot_image_truemask_predictedmask
 import numpy as np
 from EDD import EDD
 from util import resize_my_images
@@ -25,9 +25,6 @@ import os
 from skimage.measure import label, regionprops
 
 np.random.seed(42)
-
-
-########################
 
 
 def metrics_line(data):
@@ -138,8 +135,6 @@ def masks_to_coloredmasks(mask, normalise=True, colors=None):
 
     return mask_colored
 
-#########################
-
 
 def get_edd_loader(path, validation_split=.10, test_split=.10, shuffle_dataset=True):
     dataset = EDD(path)  # instantiating the data set.
@@ -184,18 +179,40 @@ def save_to_tif(path, data):
         np.save(f, data, allow_pickle=True)
 
 
+def compute_bboxs_from_masks(masks):
+    # input (5, 224, 224)
+
+    bboxs = []
+    for label, mask in enumerate(masks):
+        regions = label(mask)
+        props = regionprops(regions)
+        for prop in props:
+            bboxs.append((
+                label,
+                (prop.bbox[1], prop.bbox[0], prop.bbox[3], prop.bbox[2])))
+    return bboxs
+
+
 def main():
 
     np.random.seed(42)
     # seting up the data set
 
-    # create_dir('./EDD2020/resized_masks/')
-    # resize_my_images('./EDD2020/EDD2020_release-I_2020-01-15/masks/',
-    #                  './EDD2020/resized_masks/', is_masks=True)
+    base_dir = './EDD2020/'
+    # base_dir = './'
 
-    # create_dir('./EDD2020/resized_images/')
-    # resize_my_images('./EDD2020/EDD2020_release-I_2020-01-15/originalImages/',
-    #                  './EDD2020/resized_images/', is_masks=False)
+    create_dir(base_dir + 'resized_masks/')
+    resize_my_images(base_dir + 'EDD2020_release-I_2020-01-15/masks/',
+                     base_dir + 'resized_masks/',
+                     is_masks=True)
+
+    create_dir(base_dir + 'resized_images/')
+    create_dir(base_dir + 'resized_bboxs/')
+    resize_my_images(base_dir + 'EDD2020_release-I_2020-01-15/originalImages/',
+                     base_dir + 'resized_images/',
+                     is_masks=False,
+                     bboxs_src=base_dir + 'EDD2020_release-I_2020-01-15/bbox/',
+                     bboxs_dst=base_dir + 'resized_bboxs/')
 
     loader = get_edd_loader('./EDD2020/', shuffle_dataset=True)
 
@@ -205,7 +222,7 @@ def main():
     scheduler = lr_scheduler.StepLR(optimizer_func, step_size=10, gamma=0.1)
     trainer = Trainer(model, optimizer=optimizer_func, scheduler=scheduler)
     # training
-    trainer.train_model(loader, num_epochs=30)
+    trainer.train_model(loader, num_epochs=1)
 
     # images, masks = next(iter(loader['test']))
 
@@ -224,7 +241,7 @@ def main():
         masks_preds = trainer.predict(images)
 
         bboxs = ...
-        bboxs_preds = ...
+        bboxs_preds = compute_bboxs_from_masks(masks_preds.squeeze(0))
 
         plot_image_truemask_predictedmask(images, masks, masks_preds, index)
         plot_image_truebbox_predictedbbox(images, bboxs, bboxs_preds, index)
@@ -245,24 +262,7 @@ def main():
                 './EDD2020/test/images/IMG_{:03d}.png'.format(index), image)
 
             # Compute BBOX ###########
-            lbl_0 = label(mask)
-            props = regionprops(lbl_0)
 
-            #img_1 = img_0.copy()
-            #print ('Image', image)
-
-            for prop in props:
-                print('Found bbox', prop.bbox)
-                cv2.rectangle(
-                    img_1, (prop.bbox[1], prop.bbox[0]), (prop.bbox[3], prop.bbox[2]), (255, 0, 0), 2)
-
-            ax1.imshow(img_0)
-            ax1.set_title('Image')
-            ax2.set_title('Mask')
-            ax3.set_title('Image with derived bounding box')
-            ax2.imshow(mask[..., 0], cmap='gray')
-            ax3.imshow(img_1)
-            plt.show()
             ##########################
 
             index += 1
