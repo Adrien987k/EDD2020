@@ -3,16 +3,41 @@ import os
 import numpy as np
 from PIL import Image
 from skimage.transform import resize
+from skimage.measure import label, regionprops
 
+import glob
 import cv2
 import os
 
 
+def create_dir(dirname):
+    try:
+        os.mkdir(dirname)
+        return True
+    except OSError:
+        return False
+
+
+def to_numpy(tensor):
+    return tensor.detach().cpu().numpy()
+
+
+def save_to_tif(path, data):
+    with open(path, 'wb') as f:
+        np.save(f, data, allow_pickle=True)
+
+
+# def load_image(path, is_mask):
+#     if not is_mask:
+#         return Image.open(path).convert("RGB")
+#     else:
+#         return Image.open(path)
+
 def load_image(path, is_mask):
     if not is_mask:
-        return Image.open(path).convert("RGB")
+        return np.asarray(Image.open(path).convert("RGB"))
     else:
-        return Image.open(path)
+        return np.asarray(Image.open(path).convert('L'))
 
 
 def load_bboxs(path):
@@ -55,6 +80,33 @@ def load_set(folder, is_mask, shuffle=False):
         img = load_image(img_fn, is_mask)
         data.append(img)
     return data, img_list
+
+
+def compute_bboxs_from_masks(masks):
+    # input (5, 224, 224)
+    bboxs = []
+    for lab, mask in enumerate(masks):
+        regions = label(mask)
+        props = regionprops(regions)
+        for prop in props:
+            bboxs.append((
+                lab,
+                (prop.bbox[1], prop.bbox[0], prop.bbox[3], prop.bbox[2])))
+    return bboxs
+
+
+def bbox_tensor_to_bbox(bboxs_tensor):
+    bboxs = []
+    for bbox_tensor in bboxs_tensor:
+        if bbox_tensor[0] == -1:
+            break
+
+        bbox = (bbox_tensor[0].item(), (bbox_tensor[1].item(),
+                                        bbox_tensor[2].item(),
+                                        bbox_tensor[3].item(),
+                                        bbox_tensor[4].item()))
+        bboxs.append(bbox)
+    return bboxs
 
 
 def resize_my_images(src, dst, is_masks, bboxs_src=None, bboxs_dst=None):
@@ -104,9 +156,9 @@ def resize_my_images(src, dst, is_masks, bboxs_src=None, bboxs_dst=None):
                 for bbox_id, bbox in enumerate(bboxs):
                     label, (xmin, ymin, xmax, ymax) = bbox
 
-                    newxmin = int(xmin * (w_target / w)) + margin
+                    newxmin = int(xmin * (w_target / w))  # + margin
                     newymin = int(ymin * (h_target / h))
-                    newxmax = int(xmax * (w_target / w)) + margin
+                    newxmax = int(xmax * (w_target / w))  # + margin
                     newymax = int(ymax * (h_target / h))
 
                     bboxs[bbox_id] = (
@@ -129,9 +181,9 @@ def resize_my_images(src, dst, is_masks, bboxs_src=None, bboxs_dst=None):
                     label, (xmin, ymin, xmax, ymax) = bbox
 
                     newxmin = int(xmin * (w_target / w))
-                    newymin = int(ymin * (h_target / h)) + margin
+                    newymin = int(ymin * (h_target / h))  # + margin
                     newxmax = int(xmax * (w_target / w))
-                    newymax = int(ymax * (h_target / h)) + margin
+                    newymax = int(ymax * (h_target / h))  # + margin
 
                     bboxs[bbox_id] = (
                         label, (newxmin, newymin, newxmax, newymax))
