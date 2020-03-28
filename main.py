@@ -64,7 +64,7 @@ def main():
     scheduler = lr_scheduler.StepLR(optimizer_func, step_size=10, gamma=0.1)
 
     trainer = Trainer(model, optimizer=optimizer_func, scheduler=scheduler)
-    trainer.train_model(loader, num_epochs=1)
+    trainer.train_model(loader, num_epochs=30)
 
     create_dir(base_dir + 'test/')
     create_dir(base_dir + 'test/images')
