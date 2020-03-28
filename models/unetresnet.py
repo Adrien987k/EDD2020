@@ -15,8 +15,7 @@ class UNetResNet(nn.Module):
     def __init__(self, in_channel, n_classes):
         super().__init__()
 
-        print('load resnet 152...')
-        self.base_model = models.resnet152(pretrained=True)
+        self.base_model = models.resnet18(pretrained=True)
 
         self.base_layers = list(self.base_model.children())
 
