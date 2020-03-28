@@ -27,12 +27,6 @@ def save_to_tif(path, data):
         np.save(f, data, allow_pickle=True)
 
 
-# def load_image(path, is_mask):
-#     if not is_mask:
-#         return Image.open(path).convert("RGB")
-#     else:
-#         return Image.open(path)
-
 def load_image(path, is_mask):
     if not is_mask:
         return np.asarray(Image.open(path).convert("RGB"))
@@ -126,7 +120,6 @@ def resize_my_images(src, dst, is_masks, bboxs_src=None, bboxs_dst=None):
             bboxs_name = img_name[:-4] + '.txt'
             bboxs = load_bboxs(os.path.join(bboxs_src, bboxs_name))
 
-        # try:
         if not is_masks:
             img = cv2.imread(os.path.join(path, img_name))
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -139,7 +132,6 @@ def resize_my_images(src, dst, is_masks, bboxs_src=None, bboxs_dst=None):
         a2 = h/w
 
         if(a1 > a2):
-            #print('a1 > a2')
             # if width greater than height
             w_target = round(img_size * a1)
             h_target = img_size
@@ -151,8 +143,6 @@ def resize_my_images(src, dst, is_masks, bboxs_src=None, bboxs_dst=None):
 
             if resize_bboxs:
                 # MODIFY BBOX
-                # h -> img_size
-                # w -> img_size * w/h
                 for bbox_id, bbox in enumerate(bboxs):
                     label, (xmin, ymin, xmax, ymax) = bbox
 
@@ -165,7 +155,6 @@ def resize_my_images(src, dst, is_masks, bboxs_src=None, bboxs_dst=None):
                         label, (newxmin, newymin, newxmax, newymax))
 
         elif(a1 < a2):
-            #print('a1 < a2')
             # if height greater than width
             w_target = img_size
             h_target = round(img_size * a2)
@@ -189,7 +178,6 @@ def resize_my_images(src, dst, is_masks, bboxs_src=None, bboxs_dst=None):
                         label, (newxmin, newymin, newxmax, newymax))
 
         elif(a1 == a2):
-            # print('a1 == a2')
             # if height and width are equal
             w_target = img_size
             h_target = img_size
@@ -217,8 +205,6 @@ def resize_my_images(src, dst, is_masks, bboxs_src=None, bboxs_dst=None):
 
         if(crop_img.shape[0] == img_size and crop_img.shape[1] == img_size):
 
-            # print("Saving image with dims: " +
-            #       str(crop_img.shape[0]) + "x" + str(crop_img.shape[1]))
             if not is_masks:
                 # SAVING AS RGB FORMAT
                 cv2.imwrite(dst + img_name, crop_img[:, :, ::-1])
@@ -230,8 +216,6 @@ def resize_my_images(src, dst, is_masks, bboxs_src=None, bboxs_dst=None):
                 save_bboxs(bboxs_dst + bboxs_name, bboxs)
 
             i += 1
-        # except:
-        #     print('Could not save image.')
 
 
 def display_image(img):
@@ -242,7 +226,6 @@ def display_image(img):
 
     '''
     from matplotlib import pyplot as plt
-    # %matplotlib inline
     plt.imshow(img,)
     plt.show()
 
